@@ -1,0 +1,36 @@
+# Local test configuration for Runpod deployment
+# This file is for testing the unified container locally before pushing to Runpod
+
+version: '3.8'
+
+services:
+  aiva-runpod:
+    build:
+      context: ../../
+      dockerfile: deploy/runpod/Dockerfile.runpod
+    image: aiva-runpod:test
+    container_name: aiva-runpod-test
+    env_file:
+      - ../../.env
+    ports:
+      - "3001:3001"   # UI
+      - "9000:9000"   # API Gateway
+      - "8888:8888"   # Jupyter Lab
+      - "8081:8081"   # Agent API
+      - "8082:8082"   # Analytics API
+      - "8086:8086"   # Unstructured Retriever
+      - "8087:8087"   # Structured Retriever
+      - "5432:5432"   # PostgreSQL
+      - "6379:6379"   # Redis
+      - "19530:19530" # Milvus
+    volumes:
+      - ./test-data:/data
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all

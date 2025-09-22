@@ -1,0 +1,52 @@
+# NVIDIA AI Virtual Assistant for Runpod Deployment
+# This Dockerfile combines all necessary services for Runpod deployment
+
+FROM nvidia/cuda:12.2.0-runtime-ubuntu22.04
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3.10 \
+    python3-pip \
+    curl \
+    git \
+    wget \
+    postgresql-client \
+    redis-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy the entire repository
+COPY . /app/
+
+# Install Python dependencies for all services
+RUN pip3 install --upgrade pip && \
+    pip3 install -r src/agent/requirements.txt && \
+    pip3 install -r src/analytics/requirements.txt && \
+    pip3 install -r src/retrievers/requirements.txt && \
+    pip3 install -r src/api_gateway/requirements.txt && \
+    pip3 install jupyterlab pandas numpy
+
+# Install supervisord for managing multiple processes
+RUN pip3 install supervisor
+
+# Create directories for logs and data
+RUN mkdir -p /var/log/supervisor /data/postgres /data/milvus /data/redis
+
+# Copy supervisor configuration
+COPY deploy/runpod/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Expose all necessary ports
+EXPOSE 8081 8082 8086 8087 9000 3001 5432 6379 19530 8888
+
+# Set environment variables
+ENV PYTHONPATH=/app:$PYTHONPATH
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Create startup script
+COPY deploy/runpod/start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# Runpod specific: Use the start script as entrypoint
+ENTRYPOINT ["/app/start.sh"]
